@@ -1,7 +1,8 @@
 import Head from 'next/head'
-import clientPromise from '../lib/mongodb'
+import clientPromise from '../../lib/mongodb'
 
-export default function Home({ isConnected }) {
+
+export default function Home({ properties }) {
   return (
     <div className="container">
       <Head>
@@ -10,51 +11,30 @@ export default function Home({ isConnected }) {
       </Head>
 
       <main>
-        <h1 className="title">
-          Welcome to <a href="https://nextjs.org">Next.js with MongoDB!</a>
+
+        <h1 className="container mx-auto">
+          Welcome to <a href="https://nextjs.org">NextBnB</a>
         </h1>
 
-        {isConnected ? (
-          <h2 className="subtitle">You are connected to MongoDB</h2>
-        ) : (
-          <h2 className="subtitle">
-            You are NOT connected to MongoDB. Check the <code>README.md</code>{' '}
-            for instructions.
-          </h2>
-        )}
 
-        <p className="description">
-          Get started by editing <code>pages/index.js</code>
-        </p>
+        <div className="flex flex-row flex-wrap">
+          {properties && properties.map(property => (
+            <div className = "flex-auto w-1/4 rounded overflow-hidden shadow-lg m-2">
+            <img className="w-full" src={property.image} />
 
-        <div className="grid">
-          <a href="https://nextjs.org/docs" className="card">
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className="card">
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className="card"
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className="card"
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
+            <div className = "px-6 py-4">
+              <div className='font-bold text-xl mb-2'>{property.name} (Up to {property.guests} guests)</div>
+            </div>
+            <p>{property.address.street}</p>
+            <p className = "text=gray-700 text-base">
+              {property.summary}
             </p>
-          </a>
+            </div>
+
+
+            )  )}
+
+
         </div>
       </main>
 
@@ -222,21 +202,41 @@ export default function Home({ isConnected }) {
   )
 }
 
+//below equivalent to Ado's video line 47
 export async function getServerSideProps(context) {
-  try {
+  
+  const { db } = await clientPromise()
+
+ const data = await db.collection("listingsAndReviews").find().sort({_id: 1}).limit(40).toArray();
+
     // client.db() will be the default database passed in the MONGODB_URI
     // You can change the database by calling the client.db() function and specifying a database like:
     // const db = client.db("myDatabase");
     // Then you can execute queries against your database like so:
     // db.find({}) or any of the MongoDB Node Driver commands
-    await clientPromise
+
+    const properties = data.map(property => {
+
+        const price =JSON.parse(JSON.stringify(property.price));
+        let cleaningFee = 0;
+        if(property.cleaning_fee !== undefined){
+          cleanFee = JSON.parse(JSON.stringify(property.cleaning_fee))
+          cleaningFee = cleaningFee.$numberDecimal
+        }
+
+      return {
+        name: property.name,
+        image: property.images.picture_url,
+        address: property.address,
+        summary: property.summary,
+        guests: property.accomodates,
+        price: price.$numberDecimal,
+        cleaning_fee: cleaningFee
+      }
+    })
+
     return {
-      props: { isConnected: true },
-    }
-  } catch (e) {
-    console.error(e)
-    return {
-      props: { isConnected: false },
+      props: { properties },
     }
   }
-}
+
